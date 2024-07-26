@@ -42,7 +42,7 @@ public class MessageManager {
 
         users.stream()
                 .filter(u -> chats.stream().noneMatch(c -> c.getUser().id() == u.id()))
-                .forEach(u -> chats.add(new Chat(u, tcp)));
+                .forEach(u -> chats.add(new Chat(u)));
 
         return users;
     }
