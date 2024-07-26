@@ -1,6 +1,9 @@
-import game.Card;
-import game.GameManager;
-import game.Suit;
+import clients.ClientTCP;
+import clients.ClientUDP;
+import mensager.Chat;
+import mensager.Message;
+import mensager.MessageManager;
+import mensager.User;
 import view.ConsoleColor;
 import view.UserInterface;
 
@@ -10,7 +13,7 @@ import java.util.Scanner;
 public class Main {
     public static void main(String[] args) {
         UserInterface ui = new UserInterface();
-        ui.changeColor(ConsoleColor.CYAN);
+        ui.changeColor(ConsoleColor.YELLOW);
         ui.printLarc();
 
         try (Scanner sc = new Scanner(System.in)) {
@@ -20,39 +23,64 @@ public class Main {
             System.out.print("password: ");
             String userPassword = sc.next();
 
+            ClientUDP udp = new ClientUDP(userId, userPassword);
+            ClientTCP tcp = new ClientTCP(userId, userPassword);
 
-            // clients.ClientUDP udp = new clients.ClientUDP(userId, userPassword);
-            // clients.ClientTCP tcp = new clients.ClientTCP(userId, userPassword);
-            // tcp.initConnection();
+            if (tcp.initConnection()) {
+                while (true) {
+                    ui.cleanConsole();
+                    ui.printLarc();
+                    ui.printMenu();
 
-            // ui.cleanConsole();
-            // ui.printLarc();
+                    int function = sc.nextInt();
 
-            System.out.println("----------------------- MENU -------------------------");
-            System.out.println("| 1. Mensagens ");
-            System.out.println("| 2. BlackJack (21) ");
-            System.out.println("------------------------------------------------------");
-            System.out.print("Selecionar número: ");
-            int function = sc.nextInt();
+                    if (function == 0) break;
 
-            if (function == 1) {
-                System.out.println("TESTE");
-            } else {
-                GameManager gm = new GameManager();
-                List<Card> cards = List.of(
-                        new Card("1", Suit.CLUB.name()),
-                        new Card("7", Suit.DIAMOND.name()),
-                        new Card("9", Suit.HEART.name())
-                );
+                    if (function == 1) {
+                        MessageManager msgManager = new MessageManager(tcp);
 
-                cards.forEach(gm::addCard);
 
-                ui.printCards(gm);
+                        int userIndex = 0;
 
+                        do {
+                            List<User> users = msgManager.getUsers();
+
+                            ui.printUsers(users);
+                            userIndex = sc.nextInt();
+
+                            if (userIndex == 0) continue;
+
+                            User selectedUser = users.get(userIndex - 1);
+
+                            Chat chat = msgManager.getChatByUserId(selectedUser.id())
+                                    .orElse(msgManager.addChat(new Chat(selectedUser)));
+
+                            String msg;
+
+                            do {
+                                ui.cleanConsole();
+                                ui.printChat(chat);
+                                ui.printMessageHeader();
+
+                                msg = sc.next();
+
+                                if (msg.equals("9") || msg.equals("0")) continue;
+
+                                chat.addMessage(new Message(tcp.getLoggedUser(), msg));
+                                udp.sendMessage(selectedUser.id(), msg);
+
+                                msgManager.updateMessages();
+
+                            } while (msg.charAt(0) != '0');
+
+                        } while (userIndex != 0);
+
+                    } else {
+                        System.out.println("Ainda não implementado!");
+                    }
+                }
             }
-
-
+            tcp.closeConnection();
         }
-        //clientTCP.closeConnection();
     }
 }
